@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using TauntGames;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,31 +8,44 @@ public class UI_Control : MonoBehaviour
 {
     #region Variables
 
+    //Public
+    [Header("Cameras")] 
+    public Camera minimapCam;
+    public RenderTexture minimapTexture;
+    [Header("Other Game Objects")]
     public GameObject playerUI;
-    public GameObject playerCameraCanvas;
     public GameObject uiCamera;
-    public GameObject playerQuitMenu;
-    public GameObject areYouSurePanel;
-    public GameObject quitPanel;
-    public Text infoText_Centre;
-    public float textFlashTime;
-    public List<GameObject> panelToSetActive;
-    public UI_Settings settings;
-
+    public GameObject mapCanvas;
+    
+    //Private
+    private bool _uiIsActive;
+    private UI_Settings settings;
+    
+    //Events
+    public delegate void OnUiIsActive();
+    public static OnUiIsActive onUiIsActive;
+    
     #endregion
 
     #region Monobeahaviour
 
+    private void Awake()
+    {
+        _uiIsActive = false;
+        StartCoroutine(nameof(SetupUI));
+        SetupEvents();
+    }
+
     private void OnEnable()
     {
         playerUI.SetActive(false);
-        playerQuitMenu.SetActive(false);
+        mapCanvas.SetActive(false);
         uiCamera.SetActive(true);
         uiCamera.SetActive(false);
         uiCamera.SetActive(true);
-        CheckCursor();
-        onPlayerNeedsInfo += FlashTextOnScreen;
-        settings.Startup();
+        ChangeCursorSetting();
+        if (settings)
+            settings.Startup();
     }
 
     private void Update()
@@ -46,108 +59,239 @@ public class UI_Control : MonoBehaviour
         {
             ToggleQuitMenu();
         }
+
+        if (Input.GetKeyDown(KeyCode.M))
+        {
+            ToggleMap();
+        }
     }
 
     #endregion
+    
+    #region Quit Menu
+    
+    public delegate void OnQuitMenuOpened();
+    public delegate void OnQuitMenuClosed();
+    public static OnQuitMenuOpened onQuitMenuOpened;
+    public static OnQuitMenuClosed onQuitMenuClosed;
+    private GameObject playerQuitMenu;
+    [Header("Quit Menu")]
+    public GameObject QuitMenuPrefab;
+    public GameObject QuitMenuContainer;
+    void OpenQuitMenu()
+    {
+        playerQuitMenu.SetActive(true);
+        onUiIsActive.Invoke();
+    }
 
-    #region Events
-
-    public delegate void OnPlayerNeedsInfo(string infoText);
-    public static OnPlayerNeedsInfo onPlayerNeedsInfo;
-
-    #endregion
-
+    void CloseQuitMenu()
+    {
+        playerQuitMenu.SetActive(false);
+        onUiIsActive.Invoke();
+    }
+    
     void ToggleQuitMenu()
     {
-        if (playerUI.activeSelf)
+        if (playerQuitMenu)
         {
-            playerUI.SetActive(false);
-            playerQuitMenu.SetActive(!playerQuitMenu.activeSelf);
+            if (playerQuitMenu.activeSelf)
+                onQuitMenuClosed.Invoke();
+            else
+                onQuitMenuOpened.Invoke();
         }
-        else
-        {
-            // uiCamera.SetActive(!uiCamera.activeSelf);
-            playerQuitMenu.SetActive(!playerQuitMenu.activeSelf);
-        }
-        CheckCursor();
     }
-    
-        
 
-    public void ToggleMainMenu()
+    #endregion
+
+    #region Main Menu
+
+    public delegate void OnOpenMainMenu();
+    public delegate void OnCloseMainMenu();
+    public static OnCloseMainMenu onCloseMainMenu;
+    public static OnOpenMainMenu onOpenMainMenu;
+
+    void OpenMainMenu()
     {
-        if (playerQuitMenu.activeSelf)
-        {
-            playerQuitMenu.SetActive(!playerQuitMenu.activeSelf);
-            playerUI.SetActive(!playerUI.activeSelf);
-        }
-        else
-        {
-            // uiCamera.SetActive(!uiCamera.activeSelf);
-            playerUI.SetActive(!playerUI.activeSelf);
-        }
-        CheckCursor();
+        playerUI.SetActive(true);
+        onUiIsActive.Invoke();
     }
 
-    public void QuitGame()
-    {
-        Application.Quit(0);
-    }
-
-    public void ReturnToGame()
+    void CloseMainMenu()
     {
         playerUI.SetActive(false);
-        playerQuitMenu.SetActive(false);
-        CheckCursor();
+        onUiIsActive.Invoke();
     }
     
-    void CheckCursor()
+    public void ToggleMainMenu()
     {
-        bool isOpen;
-        if (playerUI.activeSelf || playerQuitMenu.activeSelf)
-            isOpen = true;
+        if (playerUI.activeSelf)
+            onCloseMainMenu.Invoke();
         else
-            isOpen = false;
-        playerCameraCanvas.SetActive(!isOpen);
-        Time.timeScale = isOpen ? 0 : 1;
-        Cursor.visible = isOpen;
-        Cursor.lockState = isOpen ? CursorLockMode.None : CursorLockMode.Locked;
+            onOpenMainMenu.Invoke();
     }
 
-    public void AreYouSure()
+    #endregion
+    
+    #region Map
+
+    void OpenMap()
     {
-        quitPanel.SetActive(!quitPanel.activeSelf);
-        areYouSurePanel.SetActive(!areYouSurePanel.activeSelf);
-        CheckCursor();
+        mapCanvas.SetActive(true);
+        minimapCam.targetTexture = null;
+        onUiIsActive.Invoke();
     }
 
-    public void SaveThenQuit()
+    void CloseMap()
     {
-        //debug.log i have saved then quit
-        Application.Quit(0);
+        mapCanvas.SetActive(false);
+        minimapCam.targetTexture = minimapTexture;
+        onUiIsActive.Invoke();
+    }
+    void ToggleMap()
+    {
+        CloseMainMenu();
+        CloseQuitMenu();
+        if (mapCanvas.activeSelf)
+            CloseMap();
+        else
+            OpenMap();
+    }
+    #endregion
+
+    #region Menu Selection Buttons
+    
+    [InfoBox("Choose Panels To Be Added To The UI - Drag Into List In Order Wanted")]
+    [Header("Menu Setup")]
+    public List<GameObject> menuPanelList;
+    private List<GameObject> panelList = new List<GameObject>();
+    public GameObject menuButtonsContainer;
+    public GameObject panelContainer;
+    public GameObject menuButtonPrefab;
+
+    public delegate void OnMenuButtonPressed(int index);
+    public static OnMenuButtonPressed onMenuButtonPressed;
+    void SetupMenuButtons()
+    {
+        if (menuPanelList.Count < 1)
+        {
+            return;
+        }
+        //for every panel add a button to container
+        onMenuButtonPressed += MenuButtonPressed;
+        for (int i = 0; i < menuPanelList.Count; i++)
+        {
+            GameObject go = Instantiate(menuButtonPrefab, menuButtonsContainer.transform);
+            go.transform.SetParent(menuButtonsContainer.transform);
+            go.transform.GetChild(0).GetChild(0).GetComponent<Text>().text = menuPanelList[i].name;
+            UI_MenuSelection_Button ms = go.GetComponent<UI_MenuSelection_Button>();
+            ms.index = i;
+        }
+    }
+    void SetupPanels()
+    {
+        //determine how many panels add to list
+        if (menuPanelList.Count < 1)
+        {
+            return ;
+        }
+        for (int i = 0; i < menuPanelList.Count; i++)
+        {
+            GameObject go = Instantiate(menuPanelList[i],panelContainer.transform);
+            go.transform.SetParent(panelContainer.transform);
+            if (go.GetComponent<UI_Settings>())
+            {
+                settings = go.GetComponent<UI_Settings>();
+            }
+        }
+
+        for (int i = 0; i < panelContainer.transform.childCount; i++)
+        {
+            panelList.Add(panelContainer.transform.GetChild(i).gameObject);
+        }
+
+        if (QuitMenuPrefab)
+        {
+            GameObject go = Instantiate(QuitMenuPrefab, QuitMenuContainer.transform);
+            go.transform.SetParent(QuitMenuContainer.transform);
+            playerQuitMenu = go;
+        }
     }
     
     public void MenuButtonPressed(int panelIndex)
     {
-        for (int i = 0; i < panelToSetActive.Count; i++)
+        for (int i = 0; i < panelList.Count; i++)
         {
-            panelToSetActive[i].SetActive(false);
+            panelList[i].SetActive(false);
         }
-        panelToSetActive[panelIndex].SetActive(true);
-        CheckCursor();
+        panelList[panelIndex].SetActive(true);
     }
 
+    IEnumerator SetupUI()
+    {
+         SetupPanels();
+         yield return new WaitForSeconds(0.1f);
+         SetupMenuButtons();
+    }
+
+    #endregion
+    
+    #region UI Prompts
+    
+    [Header("UI Prompts")]
+    public Text infoTextCentre;
+    public float textFlashTime;
+    public delegate void OnPlayerNeedsInfo(string infoText);
+    public static OnPlayerNeedsInfo onPlayerNeedsInfo;
     void FlashTextOnScreen(string infoText)
     {
-        infoText_Centre.text = infoText;
+        StartCoroutine(FlashText(infoText));
     }
-    
-
-    IEnumerator FlashText(InventoryResults results)
+    IEnumerator FlashText(string _infoString)
     {
-        infoText_Centre.color = results._textColor;
-        infoText_Centre.text = results._infoString;
+        infoTextCentre.text = "";
+        infoTextCentre.text = _infoString;
         yield return new WaitForSeconds(textFlashTime);
-        infoText_Centre.text = "";
+        infoTextCentre.text = "";
     }
+
+    #endregion
+
+    #region Class Methods
+    void SetupEvents()
+    {
+        //Open Quit Menu Events
+        onQuitMenuOpened += OpenQuitMenu;
+        onQuitMenuOpened += CloseMap;
+        onQuitMenuOpened += CloseMainMenu;
+        //Close Quit Menu Events
+        onQuitMenuClosed += CloseQuitMenu; 
+        //Open Main Menu Events
+        onOpenMainMenu += CloseMap;
+        onOpenMainMenu += CloseQuitMenu;
+        onOpenMainMenu += OpenMainMenu;
+        //Close Main Menu Events
+        onCloseMainMenu += CloseMainMenu;
+        //On UI is Active Events
+        onUiIsActive += ChangeCursorSetting;
+        //Info Text Events
+        onPlayerNeedsInfo += FlashTextOnScreen;
+    }
+    void ChangeCursorSetting()
+    {
+        if (playerQuitMenu)
+        {
+            _uiIsActive = playerQuitMenu.activeSelf;
+        }
+        if (playerUI.activeSelf || mapCanvas.activeSelf)
+            _uiIsActive = true;
+        else
+            _uiIsActive = false;
+        
+        Time.timeScale = _uiIsActive ? 0 : 1;
+        Cursor.visible = _uiIsActive;
+        Cursor.lockState = _uiIsActive ? CursorLockMode.None : CursorLockMode.Locked;
+    }
+
+    #endregion
+    
 }

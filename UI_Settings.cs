@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Sirenix.OdinInspector;
-using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.UI;
@@ -10,10 +8,11 @@ public class UI_Settings : MonoBehaviour
 {
     #region Class Variables
 
-    [Header("Main Camera")] [Sirenix.OdinInspector.ReadOnly]
+    [Header("Main Camera")] [ReadOnly]
     public Camera cam;
 
-    [Header("Settings Panels List")] public List<GameObject> settingsPanels;
+    [Header("Settings Panels List")] 
+    public List<GameObject> settingsPanels;
 
     [Header("Audio Settings")] public Slider masterSlider;
     public Slider musicSlider;
@@ -38,57 +37,55 @@ public class UI_Settings : MonoBehaviour
     [Header("Detects if quality Settings Changed")]
     private bool isFromQualityPreset;
 
-    [Header("Save Variables")] [Header("Audio")] [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [Header("Save Variables")] [Header("Audio")] [ShowInInspector] [ReadOnly]
     private readonly string musicVolumeSave = "MusicVolume";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string masterVolumeSave = "MasterVolume";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string sfxVolumeSave = "SfxVolume";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string muteVolumeSave = "MuteVolume";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string previousMasterVolumeSave = "PreviousMasterVolume";
 
-    [Header("Video")] [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [Header("Video")] [ShowInInspector] [ReadOnly]
     private readonly string fieldOfViewSave = "FieldOfView";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string ResolutionSave = "Resolution";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string vSyncSave = "Vsync";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string frameRateCapSave = "FrameRateCap";
 
-    [Header("Quality")] [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [Header("Quality")] [ShowInInspector] [ReadOnly]
     private readonly string QualityPresetSave = "QualityPreset";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string textureResolutionSave = "TextureResolution";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string shadowQualitySave = "ShadowQuality";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string shadowResolutionSave = "ShadowResolution";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string antiAliasingSave = "AntiAliasing";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string shadowDistanceSave = "ShadowDistance";
 
-    [ShowInInspector] [Sirenix.OdinInspector.ReadOnly]
+    [ShowInInspector] [ReadOnly]
     private readonly string drawDistanceSave = "DrawDistance";
 
     #endregion
-
-
     public void Startup()
     {
         cam = Camera.main;
@@ -99,29 +96,50 @@ public class UI_Settings : MonoBehaviour
 
         GetAllSettings();
     }
-
     void SaveAllSettings()
     {
         SaveAudioSettings();
         SaveVideoSettings();
         SaveQualitySettings();
     }
+    void GetAllSettings()
+    {
+        GetAllAudioSettings();
+        GetAllVideoSettings();
+        LoadQualitySettings();
+    }
 
     #region Audio
 
     public void SetMasterVolume(float _volume)
     {
-        audioMixer.SetFloat(masterVolumeSave, _volume);
+        audioMixer.SetFloat(masterVolumeSave, Mathf.Log10(_volume) * 20);
+    }
+    void SetMasterVolumeUI()
+    {
+        audioMixer.GetFloat(masterVolumeSave, out float vol);
+        masterSlider.SetValueWithoutNotify(vol);
     }
 
     public void SetMusicVolume(float _volume)
     {
-        audioMixer.SetFloat(musicVolumeSave, _volume);
+        audioMixer.SetFloat(musicVolumeSave, Mathf.Log10(_volume) * 20);
+        
+    }
+    void SetMusicVolumeUI()
+    {
+        audioMixer.GetFloat(musicVolumeSave, out float vol);
+        musicSlider.SetValueWithoutNotify(vol);
     }
 
     public void SetSfxVolume(float _volume)
     {
-        audioMixer.SetFloat(sfxVolumeSave, _volume);
+        audioMixer.SetFloat(sfxVolumeSave, Mathf.Log10(_volume) * 20);
+    }
+    void SetSfxVolumeUI()
+    {
+        audioMixer.GetFloat(sfxVolumeSave, out float vol);
+        sfxSlider.SetValueWithoutNotify(vol);
     }
 
     public void MuteAudio(bool value)
@@ -136,8 +154,13 @@ public class UI_Settings : MonoBehaviour
         }
     }
 
-    #endregion
+    void SetMuteUI()
+    {
+        bool m = ES3.Load<bool>(muteVolumeSave);
+        muteToggle.isOn = m;
+    }
 
+    #endregion
 
     #region Quality Settings
 
@@ -357,59 +380,79 @@ public class UI_Settings : MonoBehaviour
 
     #endregion
 
-  
-
-    void GetAllSettings()
-    {
-        // GetAllAudioSettings();
-        GetAllVideoSettings();
-        LoadQualitySettings();
-    }
-
-    
-
-
     #region Audio Settings
 
     void GetAllAudioSettings()
     {
         //--------------Load Audio Settings----------
         float master = ES3.Load<float>(masterVolumeSave);
-        masterSlider.SetValueWithoutNotify(master);
-        audioMixer.SetFloat(masterVolumeSave, master);
+        SetMasterVolume(master);
+        SetMasterVolumeUI();
         float music = ES3.Load<float>(musicVolumeSave);
-        musicSlider.SetValueWithoutNotify(music);
-        audioMixer.SetFloat(musicVolumeSave, music);
+        SetMusicVolume(music);
+        SetMusicVolumeUI();
         float sfx = ES3.Load<float>(sfxVolumeSave);
-        sfxSlider.value = sfx;
-        audioMixer.SetFloat(sfxVolumeSave, sfx);
+        SetSfxVolume(sfx);
+        SetSfxVolumeUI();
+        bool mute = ES3.Load<bool>(muteVolumeSave);
+        MuteAudio(mute);
+        SetMuteUI();
         previousMasterVolume = master;
     }
 
     public void SaveAudioSettings()
     {
         //--------------Save Audio Settings----------
-        audioMixer.GetFloat(masterVolumeSave, out float masterVolumeMixer);
-        ES3.Save(masterVolumeSave, masterVolumeMixer);
-        audioMixer.GetFloat(musicVolumeSave, out float musicVolumeMixer);
-        ES3.Save(musicVolumeSave, musicVolumeMixer);
-        audioMixer.GetFloat(sfxVolumeSave, out float sfxVolumeMixer);
-        ES3.Save(sfxVolumeSave, sfxVolumeMixer);
+        // audioMixer.GetFloat(masterVolumeSave, out float masterVolumeMixer);
+        ES3.Save(masterVolumeSave, masterSlider.value);
+        // audioMixer.GetFloat(musicVolumeSave, out float musicVolumeMixer);
+        ES3.Save(musicVolumeSave, musicSlider.value);
+        // audioMixer.GetFloat(sfxVolumeSave, out float sfxVolumeMixer);
+        ES3.Save(sfxVolumeSave, sfxSlider.value);
         ES3.Save(previousMasterVolumeSave, previousMasterVolume);
+        ES3.Save(muteVolumeSave, muteToggle.isOn);
     }
 
     #endregion
 
     #region Video Settings
 
-    void GetAllVideoSettings()
+    public void SetResolution(int value)
     {
-        //****************LOAD VIDEO SETTINGS***************
+        string resolutionText = resolutionDropdown.options[value].text;
+        int width = int.Parse(resolutionText.Split('x')[0]);
+        int height = int.Parse(resolutionText.Split('x')[1]);
+        FullScreenMode screenMode = Screen.fullScreenMode;
+        Screen.SetResolution(width, height, screenMode);
+    }
+    void SetResolutionUI()
+    {
+        int res = ES3.Load<int>(ResolutionSave);
+        resolutionDropdown.SetValueWithoutNotify(res);
+    }
 
-        //-----------------FIELD OF VIEW------------------
-        float fov = ES3.Load<float>(fieldOfViewSave);
-        cam.fieldOfView = fov;
-        switch (fov)
+    public void SetFieldOfView(int value)
+    {
+        switch (value)
+        {
+            case 0:
+                cam.fieldOfView = 60f;
+                break;
+            case 1:
+                cam.fieldOfView = 90f;
+                break;
+            case 2:
+                cam.fieldOfView = 120f;
+                break;
+            default:
+                cam.fieldOfView = 60f;
+                Debug.Log("Error: FOV Type Mismatch - revert to 60 degrees");
+                break;
+        }
+    }
+    void SetFieldOfViewUI()
+    {
+        switch (cam.fieldOfView)
         {
             case 60f:
                 fieldOFViewDropDown.SetValueWithoutNotify(0);
@@ -425,26 +468,11 @@ public class UI_Settings : MonoBehaviour
                 Debug.Log("Error: FOV Type Mismatch - revert to 60 degrees");
                 break;
         }
+    }
 
-        //----------------RESOLUTION---------------
-        int res = ES3.Load<int>(ResolutionSave);
-        resolutionDropdown.SetValueWithoutNotify(res);
-        string resolutionText = resolutionDropdown.options[res].text;
-        int width = int.Parse(resolutionText.Split('x')[0]);
-        int height = int.Parse(resolutionText.Split('x')[1]);
-        FullScreenMode screenMode = Screen.fullScreenMode;
-        Screen.SetResolution(width, height, screenMode);
-
-        //-----------------VERTICAL SYNC-------------------
-        int vsync = ES3.Load<int>(vSyncSave);
-        vsyncDropDown.SetValueWithoutNotify(vsync);
-        QualitySettings.vSyncCount = vsync;
-
-        //--------------FRAMERATE LIMIT--------------------
-        //framerate cap doesn't work if vsync is active
-        int fpsCap = ES3.Load<int>(frameRateCapSave);
-        refreshRateCapDropdown.SetValueWithoutNotify(fpsCap);
-        switch (fpsCap)
+    public void SetFramerateLimit(int value)
+    {
+        switch (value)
         {
             case 0:
                 Application.targetFrameRate = -1;
@@ -479,11 +507,104 @@ public class UI_Settings : MonoBehaviour
                 break;
         }
     }
+    void SetFramerateLimitUI()
+    {
+        switch (Application.targetFrameRate)
+        {
+            case -1:
+                refreshRateCapDropdown.SetValueWithoutNotify(0);
+                break;
+            case 30:
+                refreshRateCapDropdown.SetValueWithoutNotify(1);
+                break;
+            case 60:
+                refreshRateCapDropdown.SetValueWithoutNotify(2);
+                break;
+            case 72:
+                refreshRateCapDropdown.SetValueWithoutNotify(3);
+                break;
+            case 90:
+                refreshRateCapDropdown.SetValueWithoutNotify(4);
+                break;
+            case 120:
+                refreshRateCapDropdown.SetValueWithoutNotify(5);
+                break;
+            case 144:
+                refreshRateCapDropdown.SetValueWithoutNotify(6);
+                break;
+            case 160:
+                refreshRateCapDropdown.SetValueWithoutNotify(7);
+                break;
+            case 240:
+                refreshRateCapDropdown.SetValueWithoutNotify(8);
+                break;
+            default:
+                refreshRateCapDropdown.SetValueWithoutNotify(0);
+                Debug.Log("Error: framerate type mismatch - revert to off");
+                break;
+        }
+    }
+
+    public void SetVsync(int value)
+    {
+        switch (value)
+        {
+            case 0:
+                QualitySettings.vSyncCount = 0;
+                break;
+            case 1:
+                QualitySettings.vSyncCount = 1;
+                break;
+            case 2:
+                QualitySettings.vSyncCount = 2;
+                break;
+            default:
+                Debug.Log("Reverting to no Vsync");
+                QualitySettings.vSyncCount = 0;
+                break;
+        }
+    }
+    void SetVsyncUI()
+    {
+        switch (QualitySettings.vSyncCount)
+        {
+            case 0:
+                vsyncDropDown.SetValueWithoutNotify(0);
+                break;
+            case 1:
+                vsyncDropDown.SetValueWithoutNotify(1);
+                break;
+            case 2:
+                vsyncDropDown.SetValueWithoutNotify(2);
+                break;
+            default:
+                Debug.Log("Reverting to no Vsync UI");
+                vsyncDropDown.SetValueWithoutNotify(0);
+                break;
+        }
+    }
+
+    void GetAllVideoSettings()
+    {
+        int res = ES3.Load<int>(ResolutionSave);
+        int fov = ES3.Load<int>(fieldOfViewSave);
+        int fps = ES3.Load<int>(frameRateCapSave);
+        int v = ES3.Load<int>(vSyncSave);
+        
+        SetResolution(res);
+        SetResolutionUI();
+        SetFieldOfView(fov);
+        SetFieldOfViewUI();
+        SetFramerateLimit(fps);
+        SetFramerateLimitUI();
+        SetVsync(v);
+        SetVsyncUI();
+    }
 
     public void SaveVideoSettings()
     {
         //--------------Save video Settings----------
-        ES3.Save(fieldOfViewSave, cam.fieldOfView);
+        ES3.Save(fieldOfViewSave, fieldOFViewDropDown.value);
         ES3.Save(ResolutionSave, resolutionDropdown.value);
         ES3.Save(vSyncSave, vsyncDropDown.value);
         ES3.Save(frameRateCapSave, refreshRateCapDropdown.value);
@@ -510,7 +631,7 @@ public class UI_Settings : MonoBehaviour
 
     public void QuitGame()
     {
-        Application.Quit();
+        Application.Quit(0);
     }
 
     #endregion
